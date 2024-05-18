@@ -1,0 +1,6 @@
+name=Tank Commander
+author=FizzyApple12 & George Takahashi
+description=Gather around a computer and team up with a friend to take on the world of tank combat.
+bundleID=com.fizzyapple12.teamtanks
+version=1.0
+buildNumber=1

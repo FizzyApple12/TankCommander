@@ -1,0 +1,1 @@
+cmd /K "%PLAYDATE_SDK_PATH%\bin\pdc source TankCommander.pdx"
