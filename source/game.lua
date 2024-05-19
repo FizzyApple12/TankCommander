@@ -1,7 +1,7 @@
 Game = {}
 
-Game.Player = {
-    Blank = {
+function Game.NewPlayer() 
+    return {
         position = {
             -- true state
             x = 0,
@@ -18,9 +18,9 @@ Game.Player = {
         health = 1.0,
 
         mechanics = {
-            forwardSpeed = 25,
-            turnSpeed = 0.3,
-            turretSpeed = 0.3,
+            forwardSpeed = 5,
+            turnSpeed = 0.5,
+            turretSpeed = 0.2,
 
             bigHitDamage = 1/8,
             smallHitDamage = 1/24,
@@ -28,7 +28,7 @@ Game.Player = {
             degreesToReload = 3 * 360
         }
     }
-}
+end
 
 Game.SendType = {
     UpdateTruePosition = 1,
@@ -61,19 +61,19 @@ Game.TeamRole = {
 
 -- 2 players for now, up to N players in the future
 Game.TeamPlayers = {
-    Game.Player.Blank,
-    Game.Player.Blank
+    Game.NewPlayer(),
+    Game.NewPlayer()
 }
 
 Game.LocalTeam = Game.TeamType.Team1
 Game.LocalRole = Game.TeamRole.Driver
 
-function Game.Send(type, from, data) 
-    Game.Recieve(type, from, data)
+function Game.Send(type, data) 
+    Game.Recieve(type, Game.LocalTeam, data)
 
     local container = {
         type = type,
-        from = from,
+        from = Game.LocalTeam,
         data = data
     }
 
@@ -111,7 +111,7 @@ function Game.Recieve(type, from, data)
     end
 
     function CASE_FireSmall(data)
-        Game.TeamPlayers[from].position.tr = data
+        Game.TeamPlayers[from].position.r = data
 
         -- TODO: trigger any fire visuals here
     end
@@ -120,7 +120,7 @@ function Game.Recieve(type, from, data)
         Game.TeamPlayers[data].health = Game.TeamPlayers[data].health - Game.TeamPlayers[data].mechanics.bigHitDamage;
 
         if Game.LocalTeam == data and Game.LocalRole == Game.TeamRole.Driver then
-            Game.Send(Game.SendType.NewHealth, Game.LocalTeam, Game.TeamPlayers[data].health)
+            Game.Send(Game.SendType.NewHealth, Game.TeamPlayers[data].health)
         end
 
         -- TODO: trigger any big hit visuals here
@@ -132,7 +132,7 @@ function Game.Recieve(type, from, data)
         -- idea: Make small hits healable and not big hits
         
         if Game.LocalTeam == data and Game.LocalRole == Game.TeamRole.Driver then
-            Game.Send(Game.SendType.NewHealth, Game.LocalTeam, Game.TeamPlayers[data].health)
+            Game.Send(Game.SendType.NewHealth, Game.TeamPlayers[data].health)
         end
 
         -- TODO: trigger any small hit visuals here
@@ -174,11 +174,11 @@ function playdate.serialMessageReceived(message)
 end
 
 function Game.Update() 
-    for i=1,#Game.TeamPlayers do
-        Game.TeamPlayers[i].position.x = Game.TeamPlayers[i].position.x + (Game.TeamPlayers[i].position.vf * math.sin(Game.TeamPlayers[i].position.r) * UpdateDeltaTime);
-        Game.TeamPlayers[i].position.y = Game.TeamPlayers[i].position.y + (Game.TeamPlayers[i].position.vf * math.cos(Game.TeamPlayers[i].position.r) * UpdateDeltaTime);
+    for i=1, #(Game.TeamPlayers) do
+        Game.TeamPlayers[i].position.x = Game.TeamPlayers[i].position.x + (Game.TeamPlayers[i].position.vf * math.sin(Game.TeamPlayers[i].position.r) * UpdateDeltaTime * Game.TeamPlayers[i].mechanics.forwardSpeed);
+        Game.TeamPlayers[i].position.y = Game.TeamPlayers[i].position.y + (Game.TeamPlayers[i].position.vf * math.cos(Game.TeamPlayers[i].position.r) * UpdateDeltaTime * Game.TeamPlayers[i].mechanics.forwardSpeed);
 
-        Game.TeamPlayers[i].position.r = Game.TeamPlayers[i].position.r + (Game.TeamPlayers[i].position.vr * UpdateDeltaTime);
-        Game.TeamPlayers[i].position.tr = Game.TeamPlayers[i].position.tr + (Game.TeamPlayers[i].position.vtr * UpdateDeltaTime);
+        Game.TeamPlayers[i].position.r = Game.TeamPlayers[i].position.r + (Game.TeamPlayers[i].position.vr * UpdateDeltaTime * Game.TeamPlayers[i].mechanics.turnSpeed);
+        Game.TeamPlayers[i].position.tr = Game.TeamPlayers[i].position.tr + (Game.TeamPlayers[i].position.vtr * UpdateDeltaTime * Game.TeamPlayers[i].mechanics.turretSpeed);
     end
 end

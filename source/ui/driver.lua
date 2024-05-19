@@ -158,7 +158,7 @@ function Driver.Update()
             backgroundLoop.frame = 5
             minigunTimer = 0
 
-            Game.Send(Game.SendType.FireSmall, Game.LocalTeam, 0)
+            Game.Send(Game.SendType.FireSmall, Game.TeamPlayers[Game.LocalTeam].position.r)
         end
     end
 
@@ -172,7 +172,7 @@ function Driver.Update()
             nixieTubeSprite:setVisible(true)
             nixieDisplayThumbsUp = false
 
-            Game.Send(Game.SendType.FireBig, Game.LocalTeam, 0)
+            Game.Send(Game.SendType.FireBig, Game.TeamPlayers[Game.LocalTeam].position.tr)
         end
     end
 
@@ -198,7 +198,7 @@ function Driver.Update()
             crankSendCounter = crankSendCounter + UpdateDeltaTime
 
             if crankSendCounter >= crankSendInterval or Game.TeamPlayers[Game.LocalTeam].reload >= 1 then
-                Game.Send(Game.SendType.ReloadProgress, Game.LocalTeam, Game.TeamPlayers[Game.LocalTeam].reload)
+                Game.Send(Game.SendType.ReloadProgress, Game.TeamPlayers[Game.LocalTeam].reload)
 
                 if Game.TeamPlayers[Game.LocalTeam].reload >= 1 then
                     nixieDisplayThumbsUp = true
@@ -241,12 +241,12 @@ function Driver.Update()
         newForwardVelocity = newForwardVelocity + 1
     end
     if playdate.buttonIsPressed(playdate.kButtonLeft) then 
-        newRotationVelocity = newRotationVelocity - 1
+        newRotationVelocity = newRotationVelocity + 1
 
         steeringFrameCounterUpdate = steeringFrameCounterUpdate - steeringFrameDeltaTime
     end
     if playdate.buttonIsPressed(playdate.kButtonRight) then 
-        newRotationVelocity = newRotationVelocity + 1
+        newRotationVelocity = newRotationVelocity - 1
 
         steeringFrameCounterUpdate = steeringFrameCounterUpdate + steeringFrameDeltaTime
     end
@@ -278,7 +278,7 @@ function Driver.Update()
 
     -- Environment Movement
     
-    cloudOffset = cloudOffset - (newRotationVelocity * 2)
+    cloudOffset = cloudOffset + (newRotationVelocity * 2)
 
     -- Health Bar
 
@@ -287,7 +287,7 @@ function Driver.Update()
     -- Movement update
 
     if newForwardVelocity ~= lastForwardVelocity then
-        Game.Send(Game.SendType.SendNewVelocity, Game.LocalTeam, newForwardVelocity)
+        Game.Send(Game.SendType.SendNewVelocity, newForwardVelocity)
 
         if newForwardVelocity == 0 then
             shouldUpdatePosition = true
@@ -296,7 +296,7 @@ function Driver.Update()
         lastForwardVelocity = newForwardVelocity
     end
     if newRotationVelocity ~= lastRotationVelocity then
-        Game.Send(Game.SendType.SendNewRotationVelocity, Game.LocalTeam, newRotationVelocity)
+        Game.Send(Game.SendType.SendNewRotationVelocity, newRotationVelocity)
 
         if newRotationVelocity == 0 then
             shouldUpdatePosition = true
@@ -306,7 +306,7 @@ function Driver.Update()
     end
 
     if shouldUpdatePosition then
-        Game.Send(Game.SendType.UpdateTruePosition, Game.LocalTeam, {
+        Game.Send(Game.SendType.UpdateTruePosition, {
             x = Game.TeamPlayers[Game.LocalTeam].position.x,
             y = Game.TeamPlayers[Game.LocalTeam].position.y,
             r = Game.TeamPlayers[Game.LocalTeam].position.r

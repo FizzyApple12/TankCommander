@@ -72,8 +72,8 @@ function Gunner.Init()
     end
 end
 
-cameraX = 0
-cameraY = 1 
+local cameraX = 0
+local cameraY = 1 
 
 function Gunner.Update() 
 
