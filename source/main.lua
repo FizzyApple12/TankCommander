@@ -2,15 +2,15 @@ import "game"
 
 import "ui/home"
 import "ui/driver"
-import "ui/gunner"
+-- import "ui/gunner"
 
 local menu = playdate.getSystemMenu()
 
 local teams = { "Team 1", "Team2" }
 local currentTeam = teams[1]
 
-local roles = { "Driver", "Gunner" }
-local currentRole = roles[1]
+-- local roles = { "Driver", "Gunner" }
+-- local currentRole = roles[1]
 
 local isReady = false
 
@@ -19,14 +19,14 @@ function PopulateTempMenuItems()
         currentTeam = value
     end)
     
-    RoleSelectorMenuItem, error = menu:addOptionsMenuItem("Role", roles, currentRole, function (value)
-        currentRole = value
-    end)
+    -- RoleSelectorMenuItem, error = menu:addOptionsMenuItem("Role", roles, currentRole, function (value)
+    --     currentRole = value
+    -- end)
 end
 
 function RemoveTempMenuItems() 
     menu:removeMenuItem(TeamSelectorMenuItem)
-    menu:removeMenuItem(RoleSelectorMenuItem)
+    -- menu:removeMenuItem(RoleSelectorMenuItem)
 end
 
 local readySelectorMenuItem, error = menu:addCheckmarkMenuItem("Ready", false, function(value)
@@ -54,23 +54,28 @@ function StartGame()
 
     Home.Dispose()
 
-    if currentRole == roles[1] then
-        Game.LocalRole = Game.TeamRole.Driver
-        Driver.Init()
-    elseif currentRole == roles[2] then
-        Game.LocalRole = Game.TeamRole.Gunner
-        Gunner.Init()
-    end
+    Game.LocalRole = Game.TeamRole.Driver
+    Driver.Init()
+
+    -- if currentRole == roles[1] then
+    --     Game.LocalRole = Game.TeamRole.Driver
+    --     Driver.Init()
+    -- elseif currentRole == roles[2] then
+    --     Game.LocalRole = Game.TeamRole.Gunner
+    --     Gunner.Init()
+    -- end
 
     RemoveTempMenuItems()
 end
 
 function EndGame() 
-    if Game.LocalRole == Game.TeamRole.Driver then
-        Driver.Dispose()
-    elseif Game.LocalRole == Game.TeamRole.Gunner then
-        Gunner.Dispose()
-    end
+    -- if Game.LocalRole == Game.TeamRole.Driver then
+    --     Driver.Dispose()
+    -- elseif Game.LocalRole == Game.TeamRole.Gunner then
+    --     Gunner.Dispose()
+    -- end
+
+    Driver.Dispose()
 
     Home.Init()
 
@@ -85,18 +90,20 @@ function playdate.update()
 
     playdate.graphics.clear()
 
-    if isReady then
-        if Game.LocalRole == Game.TeamRole.Driver then
-            Driver.Update()
-        elseif Game.LocalRole == Game.TeamRole.Gunner then
-            Gunner.Update()
-        end
-    else
-        Home.Update()
-    end
-
     Game.Update()
 
     playdate.frameTimer.updateTimers()
     playdate.graphics.sprite.update() 
+
+    if isReady then
+        Driver.Update()
+
+        -- if Game.LocalRole == Game.TeamRole.Driver then
+        --     Driver.Update()
+        -- elseif Game.LocalRole == Game.TeamRole.Gunner then
+        --     Gunner.Update()
+        -- end
+    else
+        Home.Update()
+    end
 end
