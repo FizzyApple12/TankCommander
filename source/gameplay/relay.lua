@@ -6,7 +6,8 @@ local Player = {
         },
         baseRotation = 0,
         turretRotation = 0,
-        health = 
+        reload = 1.0,
+        health = 1.0
     }
 }
 
@@ -17,23 +18,31 @@ function Connect()
 end
 
 SendType = {
-    UpdatePosition = "1",
-    UpdateRotation = "2",
-    UpdateTurretRotation = "3",
+    UpdatePosition = 1,
+    UpdateRotation = 2,
+    UpdateTurretRotation = 3,
 
-    FireBig = "4",
-    FireSmall = "5",
+    FireBig = 4,
+    FireSmall = 5,
     
-    ReloadProgress = "6"
+    ReloadProgress = 6,
 }
 
 FromType = {
-    Team1 = "1",
-    Team2 = "2",
+    Team1 = 1,
+    Team2 = 2,
 }
 
 function Send(type, from, data) 
     Recieve(type, from, data)
+
+    local container = {
+        type = type,
+        from = from,
+        data = data
+    }
+
+    print("msg " .. json.encode(container))
 end
 
 function Recieve(type, from, data) 
@@ -46,22 +55,28 @@ function Recieve(type, from, data)
     end
 
     function CASE_UpdatePosition(data)
-        -- playerToUpdate.
+        playerToUpdate.position.x = data.x
+        playerToUpdate.position.y = data.y
     end
 
     function CASE_UpdateRotation(data)
+        playerToUpdate.baseRotation = data
     end
 
     function CASE_UpdateTurretRotation(data)
+        playerToUpdate.turretRotation = data
     end
 
     function CASE_FireBig(data)
+        -- handle firing
     end
 
     function CASE_FireSmall(data)
+        -- handle firing
     end
 
     function CASE_ReloadProgress(data)
+        playerToUpdate.reload = data
     end
 
     local Cases = {
@@ -82,6 +97,12 @@ function Recieve(type, from, data)
     end
 end
 
+function playdate.serialMessageReceived(message)
+    local container = json.decode(message)
+
+    Recieve(container.type, container.from, container.data)
+end
+
 function Update() 
 
     -- return {
@@ -94,8 +115,13 @@ function Disconnect()
 end
 
 return {
+    SendType = SendType,
+    FromType = FromType,
+
     Connect = Connect,
+
     Send = Send,
+    Recieve = Recieve,
 
     Update = Update,
     Disconnect = Disconnect,

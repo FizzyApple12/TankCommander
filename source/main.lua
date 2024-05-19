@@ -1,7 +1,7 @@
-local Driver = import "views.driver"
-local Gunner = import "views.gunner"
+local Driver = import "views/driver"
+local Gunner = import "views/gunner"
 
-local GameServer = import "server.server"
+local GameRelay = import "gameplay/relay"
 
 local menu = playdate.getSystemMenu()
 
@@ -14,14 +14,10 @@ local currentRole = roles[0]
 local isReady = false
 
 local teamSelectorMenuItem, error = menu:addOptionsMenuItem("Team", teams, currentTeam, function (value)
-    print("Team Selected: ", value)
-
     currentTeam = value
 end)
 
 local roleSelectorMenuItem, error = menu:addOptionsMenuItem("Role", roles, currentRole, function (value)
-    print("Role Selected: ", value)
-
     if value ~= currentRole then
         if value == roles[0] then
             Gunner.Dispose()
@@ -39,8 +35,6 @@ local roleSelectorMenuItem, error = menu:addOptionsMenuItem("Role", roles, curre
 end)
 
 local readySelectorMenuItem, error = menu:addCheckmarkMenuItem("Ready", false, function(value)
-    print("Ready: ", value)
-
     isReady = value
 end)
 
@@ -48,6 +42,8 @@ Driver.Init()
 
 function playdate.update()
     playdate.graphics.clear()
+
+    GameRelay.Send(GameRelay.SendType.UpdateRotation, GameRelay.FromType.Team1, 10)
 
     if currentRole == roles[0] then
         Driver.Update()
