@@ -18,7 +18,7 @@ Game.Player = {
         health = 1.0,
 
         mechanics = {
-            forwardSpeed = 10,
+            forwardSpeed = 25,
             turnSpeed = 0.3,
             turretSpeed = 0.3,
 

@@ -1,8 +1,39 @@
+import 'ui/minimap'
+
 import "CoreLibs/sprites"
 import "CoreLibs/animation"
 import "CoreLibs/frameTimer"
 
 Driver = {}
+
+-- clouds
+local cloudOffset = 0
+local cloudWidth = 800
+local cloudImage = playdate.graphics.image.new("images/Clouds.png")
+local cloudSprite1 = playdate.graphics.sprite.new(cloudImage)
+local cloudSprite2 = playdate.graphics.sprite.new(cloudImage)
+cloudSprite1:setCenter(0,0)
+cloudSprite2:setCenter(0,0)
+cloudSprite1:moveTo(0, 16)
+cloudSprite2:moveTo(800, 16)
+cloudSprite1.update = function()
+    local cloudOffsetTrue = math.abs(cloudOffset - cloudWidth) + cloudWidth
+
+    if cloudOffset <= cloudWidth then
+        cloudSprite1:moveTo(-(math.fmod(cloudOffsetTrue, cloudWidth * 2) - cloudWidth), 16)
+    else
+        cloudSprite1:moveTo(math.fmod(cloudOffsetTrue, cloudWidth * 2) - cloudWidth, 16)
+    end
+end
+cloudSprite2.update = function()
+    local cloudOffsetTrue = math.abs(cloudOffset - cloudWidth)
+
+    if cloudOffset <= cloudWidth then
+        cloudSprite2:moveTo(-(math.fmod(cloudOffsetTrue, cloudWidth * 2) - cloudWidth), 16)
+    else
+        cloudSprite2:moveTo(math.fmod(cloudOffsetTrue, cloudWidth * 2) - cloudWidth, 16)
+    end
+end
 
 -- background
 local backgroundFrameTime = 1000 / 12
@@ -68,17 +99,39 @@ nixieTubeSprite.update = function()
 end
 
 -- health bar
+local displayHealth = 1.0
+local healthFlashFrameTime = 1000 / 4
 local healthBarImagetable = playdate.graphics.imagetable.new("images/HealthBar-table-128-64.png")
+local healthBarLoop = playdate.graphics.animation.loop.new(healthFlashFrameTime, healthBarImagetable, true)
+healthBarLoop.startFrame = 8
+healthBarLoop.endFrame = 9
 local healthBarSprite = playdate.graphics.sprite.new(healthBarImagetable[1])
 healthBarSprite:moveTo(319, 152)
+healthBarSprite.update = function()
+    if displayHealth <= 1/8 then
+        healthBarSprite:setImage(healthBarLoop:image())
+    else
+        local clampedHealth = math.max(math.min(displayHealth, 1), 0)
+        healthBarSprite:setImage(healthBarImagetable[math.floor((1 - clampedHealth) * 8) + 1])
+    end
+end
 
 function Driver.Init()
+    cloudSprite1:add()
+    cloudSprite2:add()
+
     backgroundSprite:add()
+
     radarSprite:add()
+
     steeringWheelSprite:add()
+
     instrumentPanelSprite:add()
-    healthBarSprite:add()
     nixieTubeSprite:add()
+
+    healthBarSprite:add()
+
+    Minimap.Init()
 end
 
 local lastForwardVelocity = 0
@@ -90,59 +143,85 @@ local totalCrankDegrees = 0
 local crankSendCounter = 0
 local crankSendInterval = 300
 
-local thumbsUpShowThisIteration = true
-local thumbsUpDuration = 1000
-
 local steeringFrame = 3
+
+local minigunTimer = 0
 
 function Driver.Update() 
     -- Big Fire
 
-    if playdate.buttonJustPressed(playdate.kButtonA) and Game.TeamPlayers[Game.LocalTeam].reload >= 1 then
-        Game.TeamPlayers[Game.LocalTeam].reload = 0
+    if playdate.buttonIsPressed(playdate.kButtonA) then
+        minigunTimer = minigunTimer + UpdateDeltaTime
 
-        backgroundLoop.paused = false
-        backgroundLoop.frame = 2
+        if not Minimap.Deployed and minigunTimer >= 1/5 then
+            backgroundLoop.paused = false
+            backgroundLoop.frame = 5
+            minigunTimer = 0
 
-        nixieTubeSprite:setVisible(true)
-        nixieDisplayThumbsUp = false
-
-        Game.Send(Game.SendType.FireBig, Game.LocalTeam, 0)
+            Game.Send(Game.SendType.FireSmall, Game.LocalTeam, 0)
+        end
     end
 
-    -- Crank-to-reload
+    if playdate.buttonJustPressed(playdate.kButtonA) then
+        if Minimap.Deployed and Game.TeamPlayers[Game.LocalTeam].reload >= 1 then
+            Game.TeamPlayers[Game.LocalTeam].reload = 0
+
+            backgroundLoop.paused = false
+            backgroundLoop.frame = 2
+
+            nixieTubeSprite:setVisible(true)
+            nixieDisplayThumbsUp = false
+
+            Game.Send(Game.SendType.FireBig, Game.LocalTeam, 0)
+        end
+    end
+
+    -- Crank actions 
 
     local change, acceleratedChange = playdate.getCrankChange()
 
-    -- > for clockwise, < for counter-clockwise
-    if change > 0 then
-        totalCrankDegrees = totalCrankDegrees + math.abs(change)
-    end
+    if Minimap.Deployed then
+        -- Crank-to-turret
 
-    if Game.TeamPlayers[Game.LocalTeam].reload < 1 then
-        Game.TeamPlayers[Game.LocalTeam].reload = totalCrankDegrees / Game.TeamPlayers[Game.LocalTeam].mechanics.degreesToReload
+        -- TODO: turret spinning
+    else
+        -- Crank-to-reload
 
-        crankSendCounter = crankSendCounter + UpdateDeltaTime
+        -- > for clockwise, < for counter-clockwise
+        if change > 0 then
+            totalCrankDegrees = totalCrankDegrees + math.abs(change)
+        end
 
-        if crankSendCounter >= crankSendInterval or Game.TeamPlayers[Game.LocalTeam].reload >= 1 then
-            Game.Send(Game.SendType.ReloadProgress, Game.LocalTeam, Game.TeamPlayers[Game.LocalTeam].reload)
+        if Game.TeamPlayers[Game.LocalTeam].reload < 1 then
+            Game.TeamPlayers[Game.LocalTeam].reload = totalCrankDegrees / Game.TeamPlayers[Game.LocalTeam].mechanics.degreesToReload
 
-            if Game.TeamPlayers[Game.LocalTeam].reload >= 1 then
-                nixieDisplayThumbsUp = true
+            crankSendCounter = crankSendCounter + UpdateDeltaTime
+
+            if crankSendCounter >= crankSendInterval or Game.TeamPlayers[Game.LocalTeam].reload >= 1 then
+                Game.Send(Game.SendType.ReloadProgress, Game.LocalTeam, Game.TeamPlayers[Game.LocalTeam].reload)
+
+                if Game.TeamPlayers[Game.LocalTeam].reload >= 1 then
+                    nixieDisplayThumbsUp = true
+                end
+
+                crankSendCounter = 0
+            end
+        else
+            crankSendCounter = crankSendCounter + UpdateDeltaTime
+
+            if crankSendCounter >= 1.5 and nixieTubeSprite:isVisible() then
+                nixieTubeSprite:setVisible(false)
             end
 
-            crankSendCounter = 0
-        end
-    else
-        crankSendCounter = crankSendCounter + UpdateDeltaTime
-
-        if crankSendCounter >= thumbsUpDuration and not thumbsUpShowThisIteration then
-            nixieTubeSprite:setVisible(false)
-
-            thumbsUpShowThisIteration = true
+            totalCrankDegrees = 0
         end
 
-        totalCrankDegrees = 0
+        playdate.graphics.setColor(playdate.graphics.kColorBlack)
+        playdate.graphics.setLineCapStyle(playdate.graphics.kLineCapStyleRound)
+        playdate.graphics.setStrokeLocation(playdate.graphics.kStrokeCentered)
+        playdate.graphics.setLineWidth(3)
+        local reloadGaugeEnd = Bezier(332, -199.4, 355.7, -172.8, 315.5, -164.46, 304.3, -188.36, math.max(math.min(1 - Game.TeamPlayers[Game.LocalTeam].reload, 1), 0))
+        playdate.graphics.drawLine(315, 196, reloadGaugeEnd.x, -reloadGaugeEnd.y)
     end
 
     -- Movement input
@@ -150,6 +229,8 @@ function Driver.Update()
     local newForwardVelocity = 0 
     local newRotationVelocity = 0 
     local shouldUpdatePosition = false
+
+    local steeringFrameDeltaTime = UpdateDeltaTime * 5
 
     local steeringFrameCounterUpdate = 0
 
@@ -162,21 +243,31 @@ function Driver.Update()
     if playdate.buttonIsPressed(playdate.kButtonLeft) then 
         newRotationVelocity = newRotationVelocity - 1
 
-        steeringFrameCounterUpdate = steeringFrameCounterUpdate + UpdateDeltaTime
+        steeringFrameCounterUpdate = steeringFrameCounterUpdate - steeringFrameDeltaTime
     end
     if playdate.buttonIsPressed(playdate.kButtonRight) then 
         newRotationVelocity = newRotationVelocity + 1
 
-        steeringFrameCounterUpdate = steeringFrameCounterUpdate - UpdateDeltaTime
+        steeringFrameCounterUpdate = steeringFrameCounterUpdate + steeringFrameDeltaTime
     end
 
-    local newSteeringFrame = 3
+    local newSteeringFrame = 1
 
-    if steeringFrameCounterUpdate ~= 0 then
-        steeringFrameCounter = math.max(math.min(steeringFrameCounter + steeringFrameCounterUpdate, 2), -2)
-        newSteeringFrame = math.floor(steeringFrameCounter + 0.5) + 2
-    else
-        steeringFrameCounterUpdate = steeringFrameCounterUpdate - (math.max(math.min(steeringFrameCounterUpdate * 1000000, 1), -1) * UpdateDeltaTime)
+    if steeringFrameCounterUpdate == 0 then
+        if steeringFrameCounter > 0 then
+            steeringFrameCounterUpdate = -math.min(steeringFrameDeltaTime, steeringFrameCounter)
+        elseif steeringFrameCounter < 0 then
+            steeringFrameCounterUpdate = math.min(steeringFrameDeltaTime, -steeringFrameCounter)
+        end
+    end
+    
+    steeringFrameCounter = math.max(math.min(steeringFrameCounter + steeringFrameCounterUpdate, 2), -2)
+    newSteeringFrame = math.floor(steeringFrameCounter + 3)
+
+    if newSteeringFrame == 3 then
+        newSteeringFrame = 1
+    elseif newSteeringFrame == 1 then
+        newSteeringFrame = 3
     end
 
     if newSteeringFrame ~= steeringFrame then
@@ -184,6 +275,14 @@ function Driver.Update()
 
         steeringFrame = newSteeringFrame
     end
+
+    -- Environment Movement
+    
+    cloudOffset = cloudOffset - (newRotationVelocity * 2)
+
+    -- Health Bar
+
+    displayHealth = Game.TeamPlayers[Game.LocalTeam].health
 
     -- Movement update
 
@@ -213,13 +312,31 @@ function Driver.Update()
             r = Game.TeamPlayers[Game.LocalTeam].position.r
         })
     end
+
+    Minimap.Update()
 end
 
 function Driver.Dispose()
+    cloudSprite1:remove()
+    cloudSprite2:remove()
+
     backgroundSprite:remove()
+
     radarSprite:remove()
+
     steeringWheelSprite:remove()
+
     instrumentPanelSprite:remove()
-    healthBarSprite:remove()
     nixieTubeSprite:remove()
+
+    healthBarSprite:remove()
+
+    Minimap.Dispose()
+end
+
+function Bezier(x0, y0, x1, y1, x2, y2, x3, y3, t)
+    return {
+        x = (1-t)*((1-t)*((1-t)*x0+t*x1)+t*((1-t)*x1+t*x2))+t*((1-t)*((1-t)*x1+t*x2)+t*((1-t)*x2+t*x3)),
+        y = (1-t)*((1-t)*((1-t)*y0+t*y1)+t*((1-t)*y1+t*y2))+t*((1-t)*((1-t)*y1+t*y2)+t*((1-t)*y2+t*y3))
+    }
 end
