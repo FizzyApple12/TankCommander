@@ -3,35 +3,33 @@ local Player = {
         position = {
             x = 0,
             y = 0,
+            r = 0
         },
-        baseRotation = 0,
         turretRotation = 0,
         reload = 1.0,
         health = 1.0
     }
 }
 
-local team1Player = Player.Blank
-local team2Player = Player.Blank
+local SendType = {
+    UpdatePositionRotation = 1,
+    UpdateTurretRotation = 2,
 
-function Connect()
-end
-
-SendType = {
-    UpdatePosition = 1,
-    UpdateRotation = 2,
-    UpdateTurretRotation = 3,
-
-    FireBig = 4,
-    FireSmall = 5,
+    FireBig = 3,
+    FireSmall = 4,
     
-    ReloadProgress = 6,
+    ReloadProgress = 5,
 }
 
-FromType = {
+local TeamType = {
     Team1 = 1,
     Team2 = 2,
 }
+
+Team1Player = Player.Blank
+Team2Player = Player.Blank
+
+LocalTeam = TeamType.Team1
 
 function Send(type, from, data) 
     Recieve(type, from, data)
@@ -48,19 +46,16 @@ end
 function Recieve(type, from, data) 
     local playerToUpdate = Player.Blank
 
-    if from == FromType.Team1Driver or from == FromType.Team1Gunner then
-        playerToUpdate = team1Player
-    elseif from == FromType.Team2Driver or from == FromType.Team2Gunner then
-        playerToUpdate = team2Player
+    if from == TeamType.Team1Driver or from == TeamType.Team1Gunner then
+        playerToUpdate = Team1Player
+    elseif from == TeamType.Team2Driver or from == TeamType.Team2Gunner then
+        playerToUpdate = Team2Player
     end
 
-    function CASE_UpdatePosition(data)
+    function CASE_UpdatePositionRotation(data)
         playerToUpdate.position.x = data.x
         playerToUpdate.position.y = data.y
-    end
-
-    function CASE_UpdateRotation(data)
-        playerToUpdate.baseRotation = data
+        playerToUpdate.position.r = data.r
     end
 
     function CASE_UpdateTurretRotation(data)
@@ -68,11 +63,12 @@ function Recieve(type, from, data)
     end
 
     function CASE_FireBig(data)
-        -- handle firing
+        playerToUpdate.turretRotation = data
+        playerToUpdate.reload = 0.0
     end
 
     function CASE_FireSmall(data)
-        -- handle firing
+        playerToUpdate.turretRotation = data
     end
 
     function CASE_ReloadProgress(data)
@@ -80,8 +76,7 @@ function Recieve(type, from, data)
     end
 
     local Cases = {
-        [SendType.UpdatePosition] =  CASE_UpdatePosition,
-        [SendType.UpdateRotation] =  CASE_UpdateRotation,
+        [SendType.UpdatePositionRotation] =  CASE_UpdatePositionRotation,
         [SendType.UpdateTurretRotation] =  CASE_UpdateTurretRotation,
         [SendType.FireBig] =  CASE_FireBig,
         [SendType.FireSmall] =  CASE_FireSmall,
@@ -90,10 +85,10 @@ function Recieve(type, from, data)
 
     Cases[type](data)
 
-    if from == FromType.Team1Driver or from == FromType.Team1Gunner then
-        team1Player = playerToUpdate
-    elseif from == FromType.Team2Driver or from == FromType.Team2Gunner then
-        team2Player = playerToUpdate
+    if from == TeamType.Team1Driver or from == TeamType.Team1Gunner then
+        Team1Player = playerToUpdate
+    elseif from == TeamType.Team2Driver or from == TeamType.Team2Gunner then
+        Team2Player = playerToUpdate
     end
 end
 
@@ -111,18 +106,12 @@ function Update()
     -- }
 end
 
-function Disconnect()
-end
-
 return {
     SendType = SendType,
-    FromType = FromType,
-
-    Connect = Connect,
+    TeamType = TeamType,
 
     Send = Send,
     Recieve = Recieve,
 
-    Update = Update,
-    Disconnect = Disconnect,
+    Update = Update
 }
