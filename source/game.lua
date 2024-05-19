@@ -1,38 +1,75 @@
-local Player = {
+Game = {}
+
+Game.Player = {
     Blank = {
         position = {
+            -- true state
             x = 0,
             y = 0,
-            r = 0
+            r = 0,
+            tr = 0,
+
+            -- network sync
+            vf = 0,
+            vr = 0,
+            vtr = 0
         },
-        turretRotation = 0,
         reload = 1.0,
-        health = 1.0
+        health = 1.0,
+
+        mechanics = {
+            forwardSpeed = 10,
+            turnSpeed = 0.3,
+            turretSpeed = 0.3,
+
+            bigHitDamage = 1/8,
+            smallHitDamage = 1/24,
+
+            degreesToReload = 3 * 360
+        }
     }
 }
 
-local SendType = {
-    UpdatePositionRotation = 1,
-    UpdateTurretRotation = 2,
+Game.SendType = {
+    UpdateTruePosition = 1,
+    UpdateTrueTurretPosition = 2,
 
-    FireBig = 3,
-    FireSmall = 4,
+    SendNewVelocity = 3,
+    SendNewRotationVelocity = 4,
+    SendNewTurretVelocity = 5,
+
+    FireBig = 6,
+    FireSmall = 7,
+
+    HitBig = 8,
+    HitSmall = 9,
     
-    ReloadProgress = 5,
+    ReloadProgress = 10,
+
+    NewHealth = 11,
 }
 
-local TeamType = {
+Game.TeamType = {
     Team1 = 1,
     Team2 = 2,
 }
 
-Team1Player = Player.Blank
-Team2Player = Player.Blank
+Game.TeamRole = {
+    Driver = 1,
+    Gunner = 2,
+}
 
-LocalTeam = TeamType.Team1
+-- 2 players for now, up to N players in the future
+Game.TeamPlayers = {
+    Game.Player.Blank,
+    Game.Player.Blank
+}
 
-function Send(type, from, data) 
-    Recieve(type, from, data)
+Game.LocalTeam = Game.TeamType.Team1
+Game.LocalRole = Game.TeamRole.Driver
+
+function Game.Send(type, from, data) 
+    Game.Recieve(type, from, data)
 
     local container = {
         type = type,
@@ -43,75 +80,105 @@ function Send(type, from, data)
     print("msg " .. json.encode(container))
 end
 
-function Recieve(type, from, data) 
-    local playerToUpdate = Player.Blank
-
-    if from == TeamType.Team1Driver or from == TeamType.Team1Gunner then
-        playerToUpdate = Team1Player
-    elseif from == TeamType.Team2Driver or from == TeamType.Team2Gunner then
-        playerToUpdate = Team2Player
+function Game.Recieve(type, from, data) 
+    function CASE_UpdateTruePosition(data)
+        Game.TeamPlayers[from].position.x = data.x
+        Game.TeamPlayers[from].position.y = data.y
+        Game.TeamPlayers[from].position.r = data.r
     end
 
-    function CASE_UpdatePositionRotation(data)
-        playerToUpdate.position.x = data.x
-        playerToUpdate.position.y = data.y
-        playerToUpdate.position.r = data.r
+    function CASE_UpdateTrueTurretPosition(data)
+        Game.TeamPlayers[from].position.tr = data
     end
 
-    function CASE_UpdateTurretRotation(data)
-        playerToUpdate.turretRotation = data
+    function CASE_SendNewVelocity(data)
+        Game.TeamPlayers[from].position.vf = data
+    end
+
+    function CASE_SendNewRotationVelocity(data)
+        Game.TeamPlayers[from].position.vr = data
+    end
+
+    function CASE_SendNewTurretVelocity(data)
+        Game.TeamPlayers[from].position.vtr = data
     end
 
     function CASE_FireBig(data)
-        playerToUpdate.turretRotation = data
-        playerToUpdate.reload = 0.0
+        Game.TeamPlayers[from].position.tr = data
+        Game.TeamPlayers[from].reload = 0.0
+
+        -- TODO: trigger any fire visuals here
     end
 
     function CASE_FireSmall(data)
-        playerToUpdate.turretRotation = data
+        Game.TeamPlayers[from].position.tr = data
+
+        -- TODO: trigger any fire visuals here
+    end
+
+    function CASE_HitBig(data)
+        Game.TeamPlayers[data].health = Game.TeamPlayers[data].health - Game.TeamPlayers[data].mechanics.bigHitDamage;
+
+        if Game.LocalTeam == data and Game.LocalRole == Game.TeamRole.Driver then
+            Game.Send(Game.SendType.NewHealth, Game.LocalTeam, Game.TeamPlayers[data].health)
+        end
+
+        -- TODO: trigger any big hit visuals here
+    end
+
+    function CASE_HitSmall(data)
+        Game.TeamPlayers[data].health = Game.TeamPlayers[data].health - Game.TeamPlayers[data].mechanics.smallHitDamage;
+        
+        -- idea: Make small hits healable and not big hits
+        
+        if Game.LocalTeam == data and Game.LocalRole == Game.TeamRole.Driver then
+            Game.Send(Game.SendType.NewHealth, Game.LocalTeam, Game.TeamPlayers[data].health)
+        end
+
+        -- TODO: trigger any small hit visuals here
     end
 
     function CASE_ReloadProgress(data)
-        playerToUpdate.reload = data
+        Game.TeamPlayers[from].reload = data
+    end
+
+    function CASE_NewHealth(data)
+        Game.TeamPlayers[from].health = data
+
+        if data <= 0 then
+            -- TODO: trigger any death visuals here
+        end
     end
 
     local Cases = {
-        [SendType.UpdatePositionRotation] =  CASE_UpdatePositionRotation,
-        [SendType.UpdateTurretRotation] =  CASE_UpdateTurretRotation,
-        [SendType.FireBig] =  CASE_FireBig,
-        [SendType.FireSmall] =  CASE_FireSmall,
-        [SendType.ReloadProgress] =  CASE_ReloadProgress,
+        [Game.SendType.UpdateTruePosition] =  CASE_UpdateTruePosition,
+        [Game.SendType.UpdateTrueTurretPosition] =  CASE_UpdateTrueTurretPosition,
+        [Game.SendType.SendNewVelocity] =  CASE_SendNewVelocity,
+        [Game.SendType.SendNewRotationVelocity] =  CASE_SendNewRotationVelocity,
+        [Game.SendType.SendNewTurretVelocity] =  CASE_SendNewTurretVelocity,
+        [Game.SendType.FireBig] =  CASE_FireBig,
+        [Game.SendType.FireSmall] =  CASE_FireSmall,
+        [Game.SendType.HitBig] =  CASE_HitBig,
+        [Game.SendType.HitSmall] =  CASE_HitSmall,
+        [Game.SendType.ReloadProgress] =  CASE_ReloadProgress,
+        [Game.SendType.NewHealth] =  CASE_NewHealth,
     }
 
     Cases[type](data)
-
-    if from == TeamType.Team1Driver or from == TeamType.Team1Gunner then
-        Team1Player = playerToUpdate
-    elseif from == TeamType.Team2Driver or from == TeamType.Team2Gunner then
-        Team2Player = playerToUpdate
-    end
 end
 
 function playdate.serialMessageReceived(message)
     local container = json.decode(message)
 
-    Recieve(container.type, container.from, container.data)
+    Game.Recieve(container.type, container.from, container.data)
 end
 
-function Update() 
+function Game.Update() 
+    for i=1,#Game.TeamPlayers do
+        Game.TeamPlayers[i].position.x = Game.TeamPlayers[i].position.x + (Game.TeamPlayers[i].position.vf * math.sin(Game.TeamPlayers[i].position.r) * UpdateDeltaTime);
+        Game.TeamPlayers[i].position.y = Game.TeamPlayers[i].position.y + (Game.TeamPlayers[i].position.vf * math.cos(Game.TeamPlayers[i].position.r) * UpdateDeltaTime);
 
-    -- return {
-    --     team1Player: team1Player,
-    --     team2Player: team2Player
-    -- }
+        Game.TeamPlayers[i].position.r = Game.TeamPlayers[i].position.r + (Game.TeamPlayers[i].position.vr * UpdateDeltaTime);
+        Game.TeamPlayers[i].position.tr = Game.TeamPlayers[i].position.tr + (Game.TeamPlayers[i].position.vtr * UpdateDeltaTime);
+    end
 end
-
-return {
-    SendType = SendType,
-    TeamType = TeamType,
-
-    Send = Send,
-    Recieve = Recieve,
-
-    Update = Update
-}

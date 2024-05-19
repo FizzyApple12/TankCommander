@@ -1,9 +1,8 @@
-Game = import "game"
+import "game"
 
-local Home = import "ui/home"
-
-local Driver = import "ui/driver"
-local Gunner = import "ui/gunner"
+import "ui/home"
+import "ui/driver"
+import "ui/gunner"
 
 local menu = playdate.getSystemMenu()
 
@@ -48,16 +47,18 @@ Home.Init()
 
 function StartGame() 
     if currentTeam == teams[1] then
-        LocalTeam = Game.TeamType.Team1
+        Game.LocalTeam = Game.TeamType.Team1
     elseif currentTeam == teams[2] then
-        LocalTeam = Game.TeamType.Team2
+        Game.LocalTeam = Game.TeamType.Team2
     end
 
     Home.Dispose()
 
     if currentRole == roles[1] then
+        Game.LocalRole = Game.TeamRole.Driver
         Driver.Init()
     elseif currentRole == roles[2] then
+        Game.LocalRole = Game.TeamRole.Gunner
         Gunner.Init()
     end
 
@@ -65,9 +66,9 @@ function StartGame()
 end
 
 function EndGame() 
-    if currentRole == roles[1] then
+    if Game.LocalRole == Game.TeamRole.Driver then
         Driver.Dispose()
-    elseif currentRole == roles[2] then
+    elseif Game.LocalRole == Game.TeamRole.Gunner then
         Gunner.Dispose()
     end
 
@@ -76,20 +77,25 @@ function EndGame()
     PopulateTempMenuItems()
 end
 
+playdate.resetElapsedTime();
+
 function playdate.update()
+    UpdateDeltaTime = playdate.getElapsedTime();
+    playdate.resetElapsedTime();
+
     playdate.graphics.clear()
 
-    -- Game.Send(Game.SendType.UpdatePositionRotation, Game.TeamType.Team1, {x = 0, y = 0, r = 10})
-
     if isReady then
-        if currentRole == roles[1] then
+        if Game.LocalRole == Game.TeamRole.Driver then
             Driver.Update()
-        elseif currentRole == roles[2] then
+        elseif Game.LocalRole == Game.TeamRole.Gunner then
             Gunner.Update()
         end
     else
         Home.Update()
     end
+
+    Game.Update()
 
     playdate.frameTimer.updateTimers()
     playdate.graphics.sprite.update() 

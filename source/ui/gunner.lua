@@ -1,22 +1,18 @@
-function Init()
+Gunner = {}
+
+function Gunner.Init()
 end
 
-function Update() 
+function Gunner.Update() 
 end
 
-function Dispose()
+function Gunner.Dispose()
 end
 
-function DrawTank(position, bodyRotation, turretRotation)
+function Gunner.DrawTank(position, bodyRotation, turretRotation)
     
 end
 
-function SetCamera(position) 
-    playdate.graphics.setDrawOffset(position.x, position.y)
+function Gunner.SetCamera(position) 
+    playdate.graphics.setDrawOffset(position.x + 200, position.y + 120)
 end
-
-return {
-    Init = Init,
-    Update = Update,
-    Dispose = Dispose,
-}

@@ -1,30 +1,21 @@
-
 import "CoreLibs/sprites"
 import "CoreLibs/animation"
 import "CoreLibs/frameTimer"
+
+Home = {}
 
 local splashImage = playdate.graphics.image.new("images/SplashScreen.png")
 local splashSprite = playdate.graphics.sprite.new(splashImage)
 splashSprite:moveTo(200, 120)
 
-function Init()
+function Home.Init()
     splashSprite:add()
 end
 
-function Update() 
+function Home.Update() 
     
 end
 
-function Dispose()
+function Home.Dispose()
     splashSprite:remove()
 end
-
-function SetCamera(position) 
-    playdate.graphics.setDrawOffset(position.x, position.y)
-end
-
-return {
-    Init = Init,
-    Update = Update,
-    Dispose = Dispose,
-}
