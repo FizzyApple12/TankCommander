@@ -61,9 +61,11 @@ radarLoop.startFrame = 1
 radarLoop.endFrame = 10
 local radarSprite = playdate.graphics.sprite.new(radarLoop:image())
 radarSprite:moveTo(63, 178)
+
+
 radarSprite.update = function()
     radarSprite:setImage(radarLoop:image())
-
+    -- radarSprite:setRotation(math.deg(Game.TeamPlayers[Game.LocalTeam].position.r)) (DO NOT USE! This wrecks CPU)
     if radarLoop.frame == 1 then
         radarLoop.delay = longRadarFrameTime;
     else

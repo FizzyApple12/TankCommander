@@ -88,7 +88,7 @@ function playdate.update()
     UpdateDeltaTime = playdate.getElapsedTime();
     playdate.resetElapsedTime();
 
-    playdate.graphics.clear()
+    -- playdate.graphics.clear()
 
     Game.Update()
 
